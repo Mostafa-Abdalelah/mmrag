@@ -65,3 +65,6 @@ class QdrantIndex:
 
     def count(self) -> int:
         return self._client.count(collection_name=_COLL, exact=True).count
+
+    def close(self) -> None:
+        self._client.close()

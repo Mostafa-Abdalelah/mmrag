@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     colpali_model: str = "vidore/colpali-v1.3"
     colpali_device: str = "mps"
     pdf_render_dpi: int = 150
+    bge_model: str = "BAAI/bge-small-en-v1.5"
+    dense_dim: int = 384
+    chunk_max_chars: int = 1200
     data_dir: Path = Field(default_factory=lambda: Path("data"))
 
     @property
@@ -21,3 +24,11 @@ class Settings(BaseSettings):
     @property
     def manifest_path(self) -> Path:
         return self.data_dir / "manifest.json"
+
+    @property
+    def qdrant_path(self) -> Path:
+        return self.data_dir / "qdrant"
+
+    @property
+    def bm25_path(self) -> Path:
+        return self.data_dir / "bm25.pkl"

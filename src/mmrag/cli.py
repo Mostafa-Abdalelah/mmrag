@@ -7,8 +7,12 @@ import typer
 from mmrag.config import Settings
 from mmrag.corpus.loader import scan_pdf_directory
 from mmrag.corpus.registry import DocumentRegistry
+from mmrag.index.bm25_store import Bm25Index
+from mmrag.index.qdrant_store import QdrantIndex
 from mmrag.ingestion.pipeline import IngestionPipeline
-from mmrag.ingestion.protocols import Embedder
+from mmrag.ingestion.protocols import Embedder, TextEmbedder
+from mmrag.ingestion.structural import DoclingParser, Parser
+from mmrag.ingestion.text_embed import BgeTextEmbedder
 from mmrag.ingestion.visual import ColPaliEmbedder
 
 app = typer.Typer(add_completion=False)
@@ -26,14 +30,32 @@ def _build_embedder(settings: Settings) -> Embedder:
     )
 
 
+def _build_parser(settings: Settings) -> Parser:
+    return DoclingParser()
+
+
+def _build_text_embedder(settings: Settings) -> TextEmbedder:
+    return BgeTextEmbedder(model_name=settings.bge_model)
+
+
 @app.command()
 def ingest(pdf_dir: Path) -> None:
     settings = Settings()
     registry = DocumentRegistry(settings.manifest_path)
+    qi = QdrantIndex(settings.qdrant_path, dense_dim=settings.dense_dim)
+    bi = Bm25Index(settings.bm25_path)
+    if settings.bm25_path.exists():
+        bi.load()
+
     pipeline = IngestionPipeline(
         embedder=_build_embedder(settings),
+        parser=_build_parser(settings),
+        text_embedder=_build_text_embedder(settings),
+        vector_index=qi,
+        bm25_index=bi,
         embeddings_dir=settings.embeddings_dir,
         render_dpi=settings.pdf_render_dpi,
+        chunk_max_chars=settings.chunk_max_chars,
     )
 
     docs = scan_pdf_directory(pdf_dir)
@@ -44,6 +66,8 @@ def ingest(pdf_dir: Path) -> None:
         pipeline.ingest_document(doc)
         registry.add(doc)
         typer.echo(f"[ok]    {doc.doc_id} ({doc.n_pages} pages)")
+    bi.save()
+    qi.close()
 
 
 if __name__ == "__main__":
