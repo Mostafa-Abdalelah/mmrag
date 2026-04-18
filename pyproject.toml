@@ -12,8 +12,8 @@ dependencies = [
     "pillow>=10.3",
     "numpy>=1.26",
     "torch>=2.3",
-    "transformers>=4.44",
-    "colpali-engine>=0.3.4",
+    "transformers>=4.44,<5.0",
+    "colpali-engine>=0.3.4,<0.4",
 ]
 
 [project.scripts]
