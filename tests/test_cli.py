@@ -85,3 +85,40 @@ def test_query_command_prints_hits(
     assert result.exit_code == 0, result.stdout
     assert "doc1" in result.stdout
     assert "p1" in result.stdout
+
+
+def test_ask_command_prints_answer(
+    sample_pdfs: dict[str, Path], tmp_path: Path, monkeypatch
+) -> None:
+    import numpy as np
+    from mmrag.generation.models import Answer, Citation
+    from mmrag.index.qdrant_store import QdrantIndex
+    from mmrag.index.schema import Chunk
+
+    data_dir = tmp_path / "data"
+    monkeypatch.setenv("MMRAG_DATA_DIR", str(data_dir))
+
+    (data_dir / "qdrant").mkdir(parents=True, exist_ok=True)
+    idx = QdrantIndex(data_dir / "qdrant", dense_dim=384)
+    idx.upsert_multivector(
+        [Chunk(chunk_id="doc1-page-1", doc_id="doc1", page=1, bbox=None,
+               modality="page_image", content="page", source_hash="h")],
+        [np.random.rand(8, 128).astype(np.float32)],
+    )
+    idx.close()
+
+    class _StubGenerator:
+        def answer(self, *, query, hits):
+            return Answer(text=f"stub answer for {query}",
+                          citations=[Citation(doc_id="doc1", page=1)])
+
+    from mmrag import cli
+    monkeypatch.setattr(cli, "_build_embedder",
+                        lambda s: _StubEmbedderForQuery())
+    monkeypatch.setattr(cli, "_build_generator", lambda s, reg: _StubGenerator())
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["ask", "what is this?", "--k", "1"])
+    assert result.exit_code == 0, result.stdout
+    assert "stub answer" in result.stdout
+    assert "doc1" in result.stdout and "p1" in result.stdout

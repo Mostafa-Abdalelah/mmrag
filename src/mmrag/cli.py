@@ -14,6 +14,8 @@ from mmrag.ingestion.protocols import Embedder, TextEmbedder
 from mmrag.ingestion.structural import DoclingParser, Parser
 from mmrag.ingestion.text_embed import BgeTextEmbedder
 from mmrag.ingestion.visual import ColPaliEmbedder
+from mmrag.generation.gemini_generator import GeminiGenerator
+from mmrag.generation.protocols import Generator
 from mmrag.retrieval.colpali_retriever import ColPaliRetriever
 
 app = typer.Typer(add_completion=False)
@@ -37,6 +39,15 @@ def _build_parser(settings: Settings) -> Parser:
 
 def _build_text_embedder(settings: Settings) -> TextEmbedder:
     return BgeTextEmbedder(model_name=settings.bge_model)
+
+
+def _build_generator(settings: Settings, registry: DocumentRegistry) -> Generator:
+    return GeminiGenerator(
+        model=settings.gemini_model,
+        api_key=settings.gemini_api_key,
+        registry=registry,
+        render_dpi=settings.answer_render_dpi,
+    )
 
 
 @app.command()
@@ -83,6 +94,27 @@ def query(text: str, k: int = 5) -> None:
     index.close()
     for h in hits:
         typer.echo(f"{h.score:.4f}  {h.doc_id}  p{h.page}  [{h.modality}]")
+
+
+@app.command()
+def ask(text: str, k: int = 5) -> None:
+    settings = Settings()
+    registry = DocumentRegistry(settings.manifest_path)
+    index = QdrantIndex(settings.qdrant_path, dense_dim=settings.dense_dim)
+    retriever = ColPaliRetriever(
+        embedder=_build_embedder(settings),
+        index=index,
+    )
+    hits = retriever.search(text, k=k)
+    index.close()
+
+    generator = _build_generator(settings, registry)
+    result = generator.answer(query=text, hits=hits)
+
+    typer.echo(result.text)
+    typer.echo("")
+    for c in result.citations:
+        typer.echo(f"  [{c.doc_id} p{c.page}]")
 
 
 if __name__ == "__main__":
