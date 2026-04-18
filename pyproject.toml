@@ -18,6 +18,7 @@ dependencies = [
     "qdrant-client>=1.12",
     "docling>=2.5.0",
     "sentence-transformers>=3.0",
+    "google-genai>=0.3",
 ]
 
 [project.scripts]

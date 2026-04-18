@@ -21,6 +21,12 @@ class DocumentManifest(BaseModel):
 
     documents: list[Document]
 
+    def get_by_hash_or_id(self, key: str) -> "Document":
+        for d in self.documents:
+            if d.sha256 == key or d.doc_id == key:
+                return d
+        raise KeyError(key)
+
     def get_by_hash(self, sha256: str) -> Document | None:
         for d in self.documents:
             if d.sha256 == sha256:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     bge_model: str = "BAAI/bge-small-en-v1.5"
     dense_dim: int = 384
     chunk_max_chars: int = 1200
+    gemini_model: str = "gemini-2.0-flash"
+    gemini_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("MMRAG_GEMINI_API_KEY", "GEMINI_API_KEY"),
+    )
+    answer_render_dpi: int = 150
     data_dir: Path = Field(default_factory=lambda: Path("data"))
 
     @property
