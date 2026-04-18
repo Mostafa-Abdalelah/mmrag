@@ -42,10 +42,11 @@ class QdrantIndex:
         )
 
     def upsert_dense(self, chunks: list[Chunk], vectors: np.ndarray) -> None:
+        _zero_mv = np.zeros((1, 128), dtype=np.float32).tolist()
         points = [
             qm.PointStruct(
                 id=_pid(c.chunk_id),
-                vector={"dense": v.tolist()},
+                vector={"dense": v.tolist(), "colpali": _zero_mv},
                 payload=c.model_dump(),
             )
             for c, v in zip(chunks, vectors, strict=True)
@@ -78,6 +79,12 @@ class QdrantIndex:
             using="colpali",
             limit=k,
             with_payload=True,
+            query_filter=qm.Filter(
+                must=[qm.FieldCondition(
+                    key="modality",
+                    match=qm.MatchValue(value="page_image"),
+                )]
+            ),
         ).points
         return [(h.payload, float(h.score)) for h in hits]
 
