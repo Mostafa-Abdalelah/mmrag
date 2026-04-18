@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pymupdf
-from PIL import Image
-
 from mmrag.corpus.models import Document
+from mmrag.ingestion.rendering import render_pages
 from mmrag.index.bm25_store import Bm25Index
 from mmrag.index.qdrant_store import QdrantIndex
 from mmrag.index.schema import Chunk
@@ -45,7 +43,7 @@ class IngestionPipeline:
         target = embeddings_path_for(self._dir, doc_id=doc.doc_id, sha256=doc.sha256)
         if target.exists():
             return
-        pages = _render_pages(doc.source_path, self._dpi)
+        pages = render_pages(doc.source_path, self._dpi)
         page_embs = [
             self._embedder.embed_page(doc_id=doc.doc_id, page=i + 1, image=img)
             for i, img in enumerate(pages)
@@ -75,14 +73,3 @@ class IngestionPipeline:
         vectors = self._text_embedder.embed_texts([c.content for c in chunks])
         self._qi.upsert_dense(chunks, vectors)
         self._bi.add(chunks)
-
-
-def _render_pages(pdf_path: Path, dpi: int) -> list[Image.Image]:
-    zoom = dpi / 72.0
-    matrix = pymupdf.Matrix(zoom, zoom)
-    images: list[Image.Image] = []
-    with pymupdf.open(pdf_path) as doc:
-        for page in doc:
-            pix = page.get_pixmap(matrix=matrix, alpha=False)
-            images.append(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
-    return images
