@@ -9,6 +9,29 @@ from mmrag.ingestion.pipeline import IngestionPipeline
 from mmrag.ingestion.storage import embeddings_path_for, load_embeddings
 from mmrag.ingestion.visual import ColPaliEmbedder
 
+
+class _NullParser:
+    def parse(self, pdf_path):
+        return []
+
+
+class _NullTextEmbedder:
+    def embed_texts(self, texts):
+        return np.zeros((len(texts), 384), dtype=np.float32)
+
+
+class _NullVectorIndex:
+    def upsert_dense(self, chunks, vectors): pass
+    def upsert_multivector(self, chunks, vectors): pass
+    def count(self): return 0
+
+
+class _NullBm25:
+    def add(self, chunks): pass
+    def search(self, query, *, k): return []
+    def save(self): pass
+    def load(self): pass
+
 NTSB_CORPUS = Path(__file__).resolve().parent.parent / "data" / "pdfs"
 
 
@@ -39,8 +62,13 @@ def test_real_pipeline_embeds_ntsb_first_three_pages(
     registry = DocumentRegistry(tmp_path / "manifest.json")
     pipeline = IngestionPipeline(
         embedder=real_embedder,
+        parser=_NullParser(),
+        text_embedder=_NullTextEmbedder(),
+        vector_index=_NullVectorIndex(),
+        bm25_index=_NullBm25(),
         embeddings_dir=tmp_path / "embeddings",
         render_dpi=100,
+        chunk_max_chars=500,
     )
     docs = scan_pdf_directory(trimmed.parent)
     for d in docs:
@@ -73,15 +101,20 @@ def test_real_pipeline_is_idempotent_on_ntsb(
 
     pipeline = IngestionPipeline(
         embedder=real_embedder,
+        parser=_NullParser(),
+        text_embedder=_NullTextEmbedder(),
+        vector_index=_NullVectorIndex(),
+        bm25_index=_NullBm25(),
         embeddings_dir=tmp_path / "embeddings",
         render_dpi=100,
+        chunk_max_chars=500,
     )
     [doc] = scan_pdf_directory(trimmed.parent)
-    path1 = pipeline.ingest_document(doc)
-    mtime1 = path1.stat().st_mtime_ns
-    path2 = pipeline.ingest_document(doc)
-    assert path2 == path1
-    assert path2.stat().st_mtime_ns == mtime1
+    pipeline.ingest_document(doc)
+    out = embeddings_path_for(tmp_path / "embeddings", doc_id=doc.doc_id, sha256=doc.sha256)
+    mtime1 = out.stat().st_mtime_ns
+    pipeline.ingest_document(doc)
+    assert out.stat().st_mtime_ns == mtime1
 
 
 @pytest.mark.slow

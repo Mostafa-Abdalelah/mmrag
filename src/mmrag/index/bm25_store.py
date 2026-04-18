@@ -4,7 +4,7 @@ import pickle
 import re
 from pathlib import Path
 
-from rank_bm25 import BM25Okapi
+from rank_bm25 import BM25L
 
 from mmrag.index.schema import Chunk
 
@@ -19,12 +19,12 @@ class Bm25Index:
     def __init__(self, path: Path) -> None:
         self._path = path
         self._chunks: list[Chunk] = []
-        self._bm25: BM25Okapi | None = None
+        self._bm25: BM25L | None = None
 
     def add(self, chunks: list[Chunk]) -> None:
         self._chunks = [*self._chunks, *chunks]
         corpus = [_tokenize(c.content) for c in self._chunks]
-        self._bm25 = BM25Okapi(corpus)
+        self._bm25 = BM25L(corpus)
 
     def search(self, query: str, *, k: int) -> list[Chunk]:
         if self._bm25 is None:
@@ -43,4 +43,4 @@ class Bm25Index:
             state = pickle.load(f)
         self._chunks = state["chunks"]
         corpus = [_tokenize(c.content) for c in self._chunks]
-        self._bm25 = BM25Okapi(corpus) if corpus else None
+        self._bm25 = BM25L(corpus) if corpus else None
