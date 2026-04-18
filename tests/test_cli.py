@@ -49,3 +49,39 @@ def test_ingest_command_registers_documents(
     assert any((data_dir / "embeddings").glob("*.npz"))
     assert (data_dir / "qdrant").exists()
     assert (data_dir / "bm25.pkl").exists()
+
+
+class _StubEmbedderForQuery:
+    def embed_page(self, *, doc_id, page, image):
+        raise NotImplementedError
+    def embed_query(self, text):
+        import numpy as np
+        return np.random.rand(4, 128).astype(np.float32)
+
+
+def test_query_command_prints_hits(
+    sample_pdfs: dict[str, Path], tmp_path: Path, monkeypatch
+) -> None:
+    import numpy as np
+    from mmrag.index.qdrant_store import QdrantIndex
+    from mmrag.index.schema import Chunk
+
+    data_dir = tmp_path / "data"
+    monkeypatch.setenv("MMRAG_DATA_DIR", str(data_dir))
+
+    (data_dir / "qdrant").mkdir(parents=True, exist_ok=True)
+    idx = QdrantIndex(data_dir / "qdrant", dense_dim=384)
+    chunk = Chunk(chunk_id="doc1-page-1", doc_id="doc1", page=1, bbox=None,
+                  modality="page_image", content="page", source_hash="h")
+    idx.upsert_multivector([chunk], [np.random.rand(8, 128).astype(np.float32)])
+    idx.close()
+
+    from mmrag import cli
+    monkeypatch.setattr(cli, "_build_embedder",
+                        lambda s: _StubEmbedderForQuery())
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["query", "anything", "--k", "1"])
+    assert result.exit_code == 0, result.stdout
+    assert "doc1" in result.stdout
+    assert "p1" in result.stdout

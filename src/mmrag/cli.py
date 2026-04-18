@@ -14,6 +14,7 @@ from mmrag.ingestion.protocols import Embedder, TextEmbedder
 from mmrag.ingestion.structural import DoclingParser, Parser
 from mmrag.ingestion.text_embed import BgeTextEmbedder
 from mmrag.ingestion.visual import ColPaliEmbedder
+from mmrag.retrieval.colpali_retriever import ColPaliRetriever
 
 app = typer.Typer(add_completion=False)
 
@@ -68,6 +69,20 @@ def ingest(pdf_dir: Path) -> None:
         typer.echo(f"[ok]    {doc.doc_id} ({doc.n_pages} pages)")
     bi.save()
     qi.close()
+
+
+@app.command()
+def query(text: str, k: int = 5) -> None:
+    settings = Settings()
+    index = QdrantIndex(settings.qdrant_path, dense_dim=settings.dense_dim)
+    retriever = ColPaliRetriever(
+        embedder=_build_embedder(settings),
+        index=index,
+    )
+    hits = retriever.search(text, k=k)
+    index.close()
+    for h in hits:
+        typer.echo(f"{h.score:.4f}  {h.doc_id}  p{h.page}  [{h.modality}]")
 
 
 if __name__ == "__main__":
