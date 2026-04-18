@@ -1,0 +1,50 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import typer
+
+from mmrag.config import Settings
+from mmrag.corpus.loader import scan_pdf_directory
+from mmrag.corpus.registry import DocumentRegistry
+from mmrag.ingestion.pipeline import IngestionPipeline
+from mmrag.ingestion.protocols import Embedder
+from mmrag.ingestion.visual import ColPaliEmbedder
+
+app = typer.Typer(add_completion=False)
+
+
+@app.callback()
+def _main() -> None:
+    pass
+
+
+def _build_embedder(settings: Settings) -> Embedder:
+    return ColPaliEmbedder(
+        model_name=settings.colpali_model,
+        device=settings.colpali_device,
+    )
+
+
+@app.command()
+def ingest(pdf_dir: Path) -> None:
+    settings = Settings()
+    registry = DocumentRegistry(settings.manifest_path)
+    pipeline = IngestionPipeline(
+        embedder=_build_embedder(settings),
+        embeddings_dir=settings.embeddings_dir,
+        render_dpi=settings.pdf_render_dpi,
+    )
+
+    docs = scan_pdf_directory(pdf_dir)
+    for doc in docs:
+        if registry.has_hash(doc.sha256):
+            typer.echo(f"[cache] {doc.doc_id}")
+            continue
+        pipeline.ingest_document(doc)
+        registry.add(doc)
+        typer.echo(f"[ok]    {doc.doc_id} ({doc.n_pages} pages)")
+
+
+if __name__ == "__main__":
+    app()
