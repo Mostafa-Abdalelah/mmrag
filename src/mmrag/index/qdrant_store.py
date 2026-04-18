@@ -66,5 +66,20 @@ class QdrantIndex:
     def count(self) -> int:
         return self._client.count(collection_name=_COLL, exact=True).count
 
+    def search_multivector(
+        self,
+        query_vectors: np.ndarray,
+        *,
+        k: int,
+    ) -> list[tuple[dict, float]]:
+        hits = self._client.query_points(
+            collection_name=_COLL,
+            query=query_vectors.astype(np.float32).tolist(),
+            using="colpali",
+            limit=k,
+            with_payload=True,
+        ).points
+        return [(h.payload, float(h.score)) for h in hits]
+
     def close(self) -> None:
         self._client.close()
