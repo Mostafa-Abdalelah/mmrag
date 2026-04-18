@@ -14,6 +14,7 @@ dependencies = [
     "torch>=2.3",
     "transformers>=4.44,<5.0",
     "colpali-engine>=0.3.4,<0.4",
+    "rank-bm25>=0.2.2",
 ]
 
 [project.scripts]
