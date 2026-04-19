@@ -25,7 +25,6 @@ Prerequisites: Python 3.11, [uv](https://docs.astral.sh/uv/), an Apple Silicon M
 
 ```bash
 uv sync
-cp .env.example .env  # then put your GEMINI_API_KEY in it
 ```
 
 Drop your PDFs in `data/pdfs/` and ingest:
@@ -35,17 +34,17 @@ Drop your PDFs in `data/pdfs/` and ingest:
 uv run rag-cli ingest data/pdfs
 
 # demo mode: first N pages of each PDF (M1 friendly)
-uv run rag-cli ingest data/pdfs --pages 3
+uv run rag-cli ingest data/pdfs --pages 100
 
 # or cap the number of docs too
-uv run rag-cli ingest data/pdfs --pages 3 --max-docs 5
+uv run rag-cli ingest data/pdfs --pages 100 --max-docs 50
 ```
 
 Then retrieve and ask:
 
 ```bash
-uv run rag-cli query "probable cause of the accident" --k 5
-uv run rag-cli ask "What is the probable cause described on page 3 of AAR2101?" --k 3
+uv run rag-cli query "probable cause of the accident" --k 50
+uv run rag-cli ask "What is the probable cause described on page 47 of AAR2101?" --k 50
 ```
 
 Re-running `ingest` on an already-processed corpus is a no-op — every doc hash prints `[cache]`.
@@ -55,7 +54,7 @@ Re-running `ingest` on an already-processed corpus is a no-op — every doc hash
 | Command                     | What it does                                                                   |
 |-----------------------------|--------------------------------------------------------------------------------|
 | `rag-cli ingest <pdf_dir>`  | Dual-path ingest into Qdrant + sparse index under `$MMRAG_DATA_DIR/` (default `data/`) |
-| `rag-cli query "<text>"`    | Top-K pages by ColPali MaxSim (`--k` default 5)                                |
+| `rag-cli query "<text>"`    | Top-K pages by ColPali MaxSim (`--k` default 50)                                |
 | `rag-cli ask "<text>"`      | Retrieve top-K then answer via Gemini with inline citations                    |
 
 ## Configuration
