@@ -19,8 +19,6 @@ Layer 2  Retrieval              → ColPali MaxSim search in Qdrant (text hybrid
 Layer 3  Generation             → Gemini 2.5 Flash answer with inline citations
 ```
 
-See [docs/TECHNICAL.md](docs/TECHNICAL.md) for the detailed technical report.
-
 ## Quickstart
 
 Prerequisites: Python 3.11, [uv](https://docs.astral.sh/uv/), an Apple Silicon Mac (MPS) or NVIDIA GPU, and a `GEMINI_API_KEY` for the `ask` command.
@@ -97,25 +95,6 @@ src/mmrag/
   cli.py       # rag-cli {ingest, query, ask}
   config.py    # pydantic-settings (env-driven)
 tests/         # mirrors src/ layout; `@pytest.mark.slow` for model-backed paths
-docs/
-  TECHNICAL.md                  # 2-page technical report
-  superpowers/prd/*.md          # product requirements document
-  superpowers/specs/*.md        # architecture spec
-  superpowers/plans/*.md        # per-phase implementation plans (P1..P4)
 ```
 
-## Status
 
-| Layer                                                    | State                                       |
-|----------------------------------------------------------|---------------------------------------------|
-| Corpus Management                                        | Done                                        |
-| Dual-path ingestion (ColPali + Docling + bge + sparse)   | Done                                        |
-| ColPali retrieval (MaxSim in Qdrant)                     | Done                                        |
-| Gemini answer with citations                             | Done                                        |
-| Hybrid fusion at query time                              | Indexed, not yet fused                      |
-| Query router, verifier, sub-page localization            | Not started — design lives in the spec      |
-| Benchmark harness, ablation matrix, Gradio UI            | Not started — design lives in the PRD       |
-
-## License
-
-MIT.
