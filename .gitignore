@@ -19,3 +19,7 @@ data/cache/
 .vscode/
 .idea/
 .DS_Store
+CLAUDE.md
+.claude/
+.docs/  
+.env

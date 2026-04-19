@@ -51,7 +51,11 @@ def _build_generator(settings: Settings, registry: DocumentRegistry) -> Generato
 
 
 @app.command()
-def ingest(pdf_dir: Path) -> None:
+def ingest(
+    pdf_dir: Path,
+    pages: int = typer.Option(0, help="If >0, ingest only the first N pages of each PDF (demo mode)."),
+    max_docs: int = typer.Option(0, help="If >0, ingest only the first N PDFs."),
+) -> None:
     settings = Settings()
     registry = DocumentRegistry(settings.manifest_path)
     qi = QdrantIndex(settings.qdrant_path, dense_dim=settings.dense_dim)
@@ -70,7 +74,12 @@ def ingest(pdf_dir: Path) -> None:
         chunk_max_chars=settings.chunk_max_chars,
     )
 
-    docs = scan_pdf_directory(pdf_dir)
+    work_dir = settings.data_dir / "_trimmed" if pages > 0 else pdf_dir
+    scan_dir = _prepare_scan_dir(pdf_dir, work_dir, pages) if pages > 0 else pdf_dir
+
+    docs = scan_pdf_directory(scan_dir)
+    if max_docs > 0:
+        docs = docs[:max_docs]
     for doc in docs:
         if registry.has_hash(doc.sha256):
             typer.echo(f"[cache] {doc.doc_id}")
@@ -80,6 +89,23 @@ def ingest(pdf_dir: Path) -> None:
         typer.echo(f"[ok]    {doc.doc_id} ({doc.n_pages} pages)")
     bi.save()
     qi.close()
+
+
+def _prepare_scan_dir(pdf_dir: Path, work_dir: Path, pages: int) -> Path:
+    import pymupdf
+    work_dir.mkdir(parents=True, exist_ok=True)
+    for src in sorted(pdf_dir.glob("*.pdf")):
+        dst = work_dir / src.name
+        if dst.exists():
+            continue
+        with pymupdf.open(src) as s:
+            if s.page_count == 0:
+                continue
+            out = pymupdf.open()
+            out.insert_pdf(s, from_page=0, to_page=min(pages - 1, s.page_count - 1))
+            out.save(dst)
+            out.close()
+    return work_dir
 
 
 @app.command()
